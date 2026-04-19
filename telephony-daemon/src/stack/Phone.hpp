@@ -1,11 +1,9 @@
 #ifndef PHONE_HPP
 #define PHONE_HPP
 
-#include "../common/CallManager.hpp"
-#include "SmsManager.hpp"
-#include "../common/DataManager.hpp"
-#include "../common/IQueue.hpp"
-#include "../common/SafeQueue.hpp"
+#include "controllers/CallManager.hpp"
+#include "controllers/SmsManager.hpp"
+#include "controllers/DataManager.hpp"
 #include "../common/Registrant.hpp"
 #include <memory>
 #include <iostream>
@@ -34,18 +32,15 @@ class Phone {
 public:
     Phone(int slotId)
         : slotId_(slotId),
-          callManagerQueue_(std::make_unique<SafeQueue<Message>>()),
-          smsManagerQueue_(std::make_unique<SafeQueue<Message>>()),
-          dataManagerQueue_(std::make_unique<SafeQueue<Message>>()),
           modemState_(ModemState::OFF),
           simState_(SimState::ABSENT) {
 
-        // Create managers
-        callManager_ = std::make_unique<CallManager>(callManagerQueue_.get(), this, slotId_);
-        smsManager_ = std::make_unique<SmsManager>(smsManagerQueue_.get(), this, slotId_);
+        // Create managers without queues
+        callManager_ = std::make_unique<CallManager>(this, slotId_);
+        smsManager_ = std::make_unique<SmsManager>(this, slotId_);
         
         // Create DataManager with a callback to register for SIM state changes
-        dataManager_ = std::make_unique<DataManager>(dataManagerQueue_.get(), this, slotId_,
+        dataManager_ = std::make_unique<DataManager>(this, slotId_,
             [this](std::shared_ptr<Registrant> registrant) {
                 this->registerForStateChanges("sim_state", registrant);
             },
@@ -79,6 +74,27 @@ public:
     CallManager* getCallManager() { return callManager_.get(); }
     SmsManager* getSmsManager() { return smsManager_.get(); }
     DataManager* getDataManager() { return dataManager_.get(); }
+
+    // Route request to appropriate controller based on controller_type
+    void handleRequest(Event* event) {
+        if (!event) return;
+        
+        if (event->type() == EventType::TELE_REQ) {
+            // Try to cast to SmsTeleRequest
+            SmsTeleRequest* smsReq = dynamic_cast<SmsTeleRequest*>(event);
+            if (smsReq && smsReq->controller_type == "sms") {
+                smsManager_->sendSms(smsReq);
+                return;
+            }
+            
+            // Try to cast to VoiceCallTeleRequest
+            VoiceCallTeleRequest* callReq = dynamic_cast<VoiceCallTeleRequest*>(event);
+            if (callReq && callReq->controller_type == "call") {
+                callManager_->sendCall(callReq);
+                return;
+            }
+        }
+    }
 
     // Modem state management
     void setModemState(ModemState state) {
@@ -153,10 +169,6 @@ private:
     std::unique_ptr<CallManager> callManager_;
     std::unique_ptr<SmsManager> smsManager_;
     std::unique_ptr<DataManager> dataManager_;
-
-    std::unique_ptr<IQueue<Message>> callManagerQueue_;
-    std::unique_ptr<IQueue<Message>> smsManagerQueue_;
-    std::unique_ptr<IQueue<Message>> dataManagerQueue_;
 
     // State management
     ModemState modemState_;

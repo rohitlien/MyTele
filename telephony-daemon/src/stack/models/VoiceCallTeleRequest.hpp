@@ -7,7 +7,11 @@
 class VoiceCallTeleRequest : public Event {
 public:
     VoiceCallTeleRequest(std::string eventId, std::string number)
+<<<<<<< HEAD
         : number(std::move(number)) {
+=======
+        : number(std::move(number)), controller_type("call") {
+>>>>>>> ee7bd08 (First Commit)
         this->eventId = std::move(eventId);
     }
 
@@ -20,6 +24,10 @@ public:
     }
 
     std::string number;
+<<<<<<< HEAD
+=======
+    std::string controller_type;
+>>>>>>> ee7bd08 (First Commit)
 };
 
 #endif

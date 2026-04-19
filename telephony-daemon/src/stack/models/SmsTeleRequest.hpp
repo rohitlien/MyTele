@@ -7,7 +7,11 @@
 class SmsTeleRequest : public Event {
 public:
     SmsTeleRequest(std::string eventId, std::string number, std::string message)
+<<<<<<< HEAD
         : number(std::move(number)), message(std::move(message)) {
+=======
+        : number(std::move(number)), message(std::move(message)), controller_type("sms") {
+>>>>>>> ee7bd08 (First Commit)
         this->eventId = std::move(eventId);
     }
 
@@ -21,6 +25,10 @@ public:
 
     std::string number;
     std::string message;
+<<<<<<< HEAD
+=======
+    std::string controller_type;
+>>>>>>> ee7bd08 (First Commit)
 };
 
 #endif
